@@ -78,7 +78,7 @@ resource "aws_vpc_endpoint" "sqs" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.sqs"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-sqs-${var.capacity}-${var.country}-${var.env}" })
@@ -89,7 +89,7 @@ resource "aws_vpc_endpoint" "secretsmanager" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-secretsmanager-${var.capacity}-${var.country}-${var.env}" })
@@ -100,7 +100,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-api-${var.capacity}-${var.country}-${var.env}" })
@@ -110,7 +110,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-dkr-${var.capacity}-${var.country}-${var.env}" })
