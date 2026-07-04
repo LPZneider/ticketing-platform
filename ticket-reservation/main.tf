@@ -36,7 +36,7 @@ resource "aws_sqs_queue" "expiry" {
 
 # ─── SECURITY GROUP — ECS task ───────────────────────────────────────────────
 resource "aws_security_group" "ecs" {
-  name        = "sg-ecs-${local.name}"
+  name        = "sgrp-ecs-${local.name}"
   description = "ticket-reservation ECS task"
   vpc_id      = var.vpc_id
 

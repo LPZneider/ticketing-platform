@@ -13,7 +13,7 @@ provider "aws" {
 
 # ─── SECURITY GROUP — sin ingress ────────────────────────────────────────────
 resource "aws_security_group" "ecs" {
-  name        = "sg-ecs-${local.name}"
+  name        = "sgrp-ecs-${local.name}"
   description = "reservation-expiry ECS task - no inbound traffic"
   vpc_id      = var.vpc_id
 

@@ -51,7 +51,7 @@ resource "aws_vpc_endpoint" "dynamodb" {
 
 # ─── VPC INTERFACE ENDPOINT — SQS ───────────────────────────────────────────
 resource "aws_security_group" "vpce_sqs" {
-  name        = "sg-vpce-sqs-${var.capacity}-${var.country}-${var.env}"
+  name        = "sgrp-vpce-sqs-${var.capacity}-${var.country}-${var.env}"
   description = "Allow HTTPS from VPC to SQS endpoint"
   vpc_id      = aws_vpc.main.id
 

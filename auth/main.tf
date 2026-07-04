@@ -74,7 +74,7 @@ resource "aws_iam_role_policy" "lambda_auth" {
 
 # ─── SECURITY GROUP — Lambda en VPC ─────────────────────────────────────────
 resource "aws_security_group" "lambda_auth" {
-  name        = "sg-lambda-auth-${var.capacity}-${var.country}-${var.env}"
+  name        = "sgrp-lambda-auth-${var.capacity}-${var.country}-${var.env}"
   description = "Lambda authorizer - egress only to VPC endpoints"
   vpc_id      = var.vpc_id
 

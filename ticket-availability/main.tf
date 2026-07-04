@@ -13,7 +13,7 @@ provider "aws" {
 
 # ─── SECURITY GROUP ──────────────────────────────────────────────────────────
 resource "aws_security_group" "ecs" {
-  name        = "sg-ecs-${local.name}"
+  name        = "sgrp-ecs-${local.name}"
   description = "ticket-availability ECS task"
   vpc_id      = var.vpc_id
 

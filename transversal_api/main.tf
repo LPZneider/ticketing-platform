@@ -13,7 +13,7 @@ provider "aws" {
 
 # ─── SECURITY GROUP — ALB interno ───────────────────────────────────────────
 resource "aws_security_group" "alb" {
-  name        = "sg-alb-${var.capacity}-${var.country}-${var.env}"
+  name        = "sgrp-alb-${var.capacity}-${var.country}-${var.env}"
   description = "ALB internal - only from API Gateway VPC Link"
   vpc_id      = var.vpc_id
 

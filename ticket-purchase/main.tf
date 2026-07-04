@@ -31,7 +31,7 @@ resource "aws_sqs_queue_redrive_policy" "purchase" {
 
 # ─── SECURITY GROUP — sin ingress (solo consume SQS vía endpoint) ────────────
 resource "aws_security_group" "ecs" {
-  name        = "sg-ecs-${local.name}"
+  name        = "sgrp-ecs-${local.name}"
   description = "ticket-purchase ECS task - no inbound traffic"
   vpc_id      = var.vpc_id
 
