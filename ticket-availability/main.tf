@@ -63,7 +63,8 @@ resource "aws_ecs_task_definition" "svc" {
     }]
     environment = [
       { name = "ENV", value = var.env },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name }
     ]
     logConfiguration = {
       logDriver = "awslogs"

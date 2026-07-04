@@ -86,9 +86,13 @@ resource "aws_ecs_task_definition" "svc" {
     }]
     environment = [
       { name = "ENV", value = var.env },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
+      { name = "ORDERS_TABLE_NAME", value = local.orders_table_name },
       { name = "PURCHASE_QUEUE_URL", value = aws_sqs_queue.purchase.url },
+      { name = "PURCHASE_QUEUE_NAME", value = aws_sqs_queue.purchase.name },
       { name = "EXPIRY_QUEUE_URL", value = aws_sqs_queue.expiry.url },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "EXPIRY_QUEUE_NAME", value = aws_sqs_queue.expiry.name }
     ]
     logConfiguration = {
       logDriver = "awslogs"

@@ -69,8 +69,11 @@ resource "aws_ecs_task_definition" "svc" {
     essential = true
     environment = [
       { name = "ENV", value = var.env },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
+      { name = "ORDERS_TABLE_NAME", value = local.orders_table_name },
       { name = "PURCHASE_QUEUE_URL", value = var.sqs_purchase_url },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "PURCHASE_QUEUE_NAME", value = local.purchase_queue_name }
     ]
     logConfiguration = {
       logDriver = "awslogs"

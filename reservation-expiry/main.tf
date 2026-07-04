@@ -51,8 +51,10 @@ resource "aws_ecs_task_definition" "svc" {
     essential = true
     environment = [
       { name = "ENV", value = var.env },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
       { name = "EXPIRY_QUEUE_URL", value = var.sqs_expiry_url },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "EXPIRY_QUEUE_NAME", value = local.expiry_queue_name }
     ]
     logConfiguration = {
       logDriver = "awslogs"
