@@ -3,21 +3,16 @@ capacity   = "ticketing"
 country    = "co"
 aws_region = "us-east-1"
 
-# Outputs de transversal_networking:
-vpc_id    = "<transversal_networking.vpc_id>"
-vpc_cidr  = "<transversal_networking.vpc_cidr>"
-subnet_id = "<transversal_networking.private_subnet_ids[ticket-availability]>"
+vpc_id    = "vpc-078f9bb42db3ac7ac"
+vpc_cidr  = "10.0.0.0/16"
+subnet_id = "subnet-010ec08720d47a421"
+sg_alb_id = "sg-015c3e11d7d5c6639"
 
-# Outputs de transversal_api:
-sg_alb_id           = "<transversal_api.sg_alb_id>"
-tg_availability_arn = "<transversal_api.tg_availability_arn>"
+ecs_cluster_arn     = "arn:aws:ecs:us-east-1:302780033379:cluster/ecs-ticketing-co-dev"
+tg_availability_arn = "arn:aws:elasticloadbalancing:us-east-1:302780033379:targetgroup/tg-availability-dev/05ce59e0d1279519"
 
-# Outputs de transversal_ecs:
-ecs_cluster_arn = "<transversal_ecs.ecs_cluster_arn>"
-
-# Outputs de transversal_data:
-kms_dynamodb_arn  = "<transversal_data.kms_dynamodb_arn>"
-tickets_table_arn = "<transversal_data.tickets_table_arn>"
+kms_dynamodb_arn  = "arn:aws:kms:us-east-1:302780033379:key/220ed17a-789b-4f6a-8537-cfefe3812092"
+tickets_table_arn = "arn:aws:dynamodb:us-east-1:302780033379:table/table-ticketing-co-tickets-dev"
 
 container_image = "nginx:latest"
 desired_count   = 1

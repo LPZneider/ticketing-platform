@@ -13,3 +13,7 @@ output "vpc_cidr" {
 output "route_table_private_id" {
   value = aws_route_table.private.id
 }
+
+output "alb_secondary_subnet_id" {
+  value = aws_subnet.alb_secondary.id
+}

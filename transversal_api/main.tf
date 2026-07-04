@@ -13,52 +13,60 @@ provider "aws" {
 
 # ─── SECURITY GROUP — ALB interno ───────────────────────────────────────────
 resource "aws_security_group" "alb" {
-  name        = "sgrp-alb-${var.capacity}-${var.country}-${var.env}"
-  description = "ALB internal - only from API Gateway VPC Link"
+  name        = "sgrp-nlb-${var.capacity}-${var.country}-${var.env}"
+  description = "NLB internal - allows API Gateway VPC Link traffic"
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "HTTP from VPC Link"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    description = "HTTP to ECS tasks"
+    description = "TCP from VPC Link (reservation)"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
-  tags = merge(local.resource_tags, { Name = "sg-alb-${var.capacity}-${var.country}-${var.env}" })
+  ingress {
+    description = "TCP from VPC Link (availability)"
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "TCP to ECS tasks"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = merge(local.resource_tags, { Name = "sg-nlb-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── ALB INTERNO ────────────────────────────────────────────────────────────
+# ─── NLB INTERNO (REST API Gateway VPC Link solo soporta NLB) ───────────────
 resource "aws_lb" "main" {
-  name               = "alb-${var.capacity}-${var.country}-${var.env}"
+  name               = "nlb-${var.capacity}-${var.country}-${var.env}"
   internal           = true
-  load_balancer_type = "application"
+  load_balancer_type = "network"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.private_subnet_ids
 
-  # Acceso a logs deshabilitado en dev; habilitar en pdn con bucket S3
   enable_deletion_protection = false
 
-  tags = merge(local.resource_tags, { Name = "alb-${var.capacity}-${var.country}-${var.env}" })
+  tags = merge(local.resource_tags, { Name = "nlb-${var.capacity}-${var.country}-${var.env}" })
 }
 
 # ─── TARGET GROUPS — uno por servicio HTTP ──────────────────────────────────
 resource "aws_lb_target_group" "reservation" {
   name        = "tg-reservation-${var.env}"
   port        = 8080
-  protocol    = "HTTP"
+  protocol    = "TCP"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
+    protocol            = "HTTP"
     path                = "/actuator/health"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -71,11 +79,12 @@ resource "aws_lb_target_group" "reservation" {
 resource "aws_lb_target_group" "availability" {
   name        = "tg-availability-${var.env}"
   port        = 8080
-  protocol    = "HTTP"
+  protocol    = "TCP"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
+    protocol            = "HTTP"
     path                = "/actuator/health"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -85,94 +94,33 @@ resource "aws_lb_target_group" "availability" {
   tags = local.resource_tags
 }
 
-# ─── LISTENER ALB ───────────────────────────────────────────────────────────
-resource "aws_lb_listener" "http" {
+# ─── NLB LISTENERS — un puerto por servicio (routing por método en API GW) ──
+# Puerto 8080 → ticket-reservation (POST /events, POST /purchases)
+resource "aws_lb_listener" "reservation" {
   load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 8080
+  protocol          = "TCP"
 
   default_action {
-    type = "fixed-response"
-    fixed_response {
-      content_type = "application/json"
-      message_body = "{\"error\":\"not found\"}"
-      status_code  = "404"
-    }
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.reservation.arn
   }
 
   tags = local.resource_tags
 }
 
-# POST /events → ticket-reservation-service (requiere rol admin en el authorizer)
-resource "aws_lb_listener_rule" "events_post" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 10
+# Puerto 8081 → ticket-availability (GET /events, GET /events/{id}/availability, GET /orders/{id})
+resource "aws_lb_listener" "availability" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8081
+  protocol          = "TCP"
 
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.reservation.arn
-  }
-
-  condition {
-    path_pattern { values = ["/events"] }
-  }
-  condition {
-    http_request_method { values = ["POST"] }
-  }
-}
-
-# POST /purchases → ticket-reservation-service
-resource "aws_lb_listener_rule" "purchases_post" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 20
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.reservation.arn
-  }
-
-  condition {
-    path_pattern { values = ["/purchases"] }
-  }
-  condition {
-    http_request_method { values = ["POST"] }
-  }
-}
-
-# GET /events y GET /events/{eventId}/availability → ticket-availability-service
-resource "aws_lb_listener_rule" "events_get" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 30
-
-  action {
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.availability.arn
   }
 
-  condition {
-    path_pattern { values = ["/events", "/events/*"] }
-  }
-  condition {
-    http_request_method { values = ["GET"] }
-  }
-}
-
-# GET /orders/{orderId} → ticket-availability-service
-resource "aws_lb_listener_rule" "orders_get" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 40
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.availability.arn
-  }
-
-  condition {
-    path_pattern { values = ["/orders/*"] }
-  }
-  condition {
-    http_request_method { values = ["GET"] }
-  }
+  tags = local.resource_tags
 }
 
 # ─── VPC LINK (API Gateway → ALB) ───────────────────────────────────────────
@@ -271,7 +219,7 @@ resource "aws_api_gateway_integration" "events_post" {
   http_method             = aws_api_gateway_method.events_post.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${aws_lb.main.dns_name}/events"
+  uri                     = "http://${aws_lb.main.dns_name}:8080/events"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -298,7 +246,7 @@ resource "aws_api_gateway_integration" "events_get" {
   http_method             = aws_api_gateway_method.events_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}/events"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/events"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -326,7 +274,7 @@ resource "aws_api_gateway_integration" "event_availability_get" {
   http_method             = aws_api_gateway_method.event_availability_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}/events/{eventId}/availability"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/events/{eventId}/availability"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -354,7 +302,7 @@ resource "aws_api_gateway_integration" "purchases_post" {
   http_method             = aws_api_gateway_method.purchases_post.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${aws_lb.main.dns_name}/purchases"
+  uri                     = "http://${aws_lb.main.dns_name}:8080/purchases"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -382,7 +330,7 @@ resource "aws_api_gateway_integration" "orders_id_get" {
   http_method             = aws_api_gateway_method.orders_id_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}/orders/{orderId}"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/orders/{orderId}"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {

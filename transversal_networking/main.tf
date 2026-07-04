@@ -115,3 +115,16 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-dkr-${var.capacity}-${var.country}-${var.env}" })
 }
+
+# ─── SUBNET SECUNDARIA EN us-east-1b (requisito ALB >= 2 AZs) ───────────────
+resource "aws_subnet" "alb_secondary" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.10.0/24"
+  availability_zone = "${var.aws_region}b"
+  tags              = merge(local.resource_tags, { Name = "subnet-${var.capacity}-${var.country}-alb-b-${var.env}" })
+}
+
+resource "aws_route_table_association" "alb_secondary" {
+  subnet_id      = aws_subnet.alb_secondary.id
+  route_table_id = aws_route_table.private.id
+}
