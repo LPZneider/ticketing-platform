@@ -40,8 +40,10 @@ deploy transversal_networking
 
 VPC_ID=$(get_output transversal_networking vpc_id)
 VPC_CIDR=$(get_output transversal_networking vpc_cidr)
+# Subnet secundaria en us-east-1b requerida por el NLB (mínimo 2 AZs)
+SUBNET_ALB_B=$(get_output transversal_networking alb_secondary_subnet_id)
 
-# Las subnets se consultan por tag Name usando AWS CLI (sin jq)
+# Las subnets de servicio se consultan por tag Name usando AWS CLI (sin jq)
 SUBNET_RESERVATION=$(get_subnet "ticket-reservation")
 SUBNET_PURCHASE=$(get_subnet "ticket-purchase")
 SUBNET_EXPIRY=$(get_subnet "reservation-expiry")
@@ -49,6 +51,7 @@ SUBNET_AVAILABILITY=$(get_subnet "ticket-availability")
 
 echo "VPC_ID=$VPC_ID"
 echo "VPC_CIDR=$VPC_CIDR"
+echo "SUBNET_ALB_B=$SUBNET_ALB_B"
 echo "SUBNET_RESERVATION=$SUBNET_RESERVATION"
 echo "SUBNET_PURCHASE=$SUBNET_PURCHASE"
 echo "SUBNET_EXPIRY=$SUBNET_EXPIRY"
@@ -97,7 +100,7 @@ aws_region = "$REGION"
 
 vpc_id             = "$VPC_ID"
 vpc_cidr           = "$VPC_CIDR"
-private_subnet_ids = ["$SUBNET_RESERVATION", "$SUBNET_AVAILABILITY"]
+private_subnet_ids = ["$SUBNET_RESERVATION", "$SUBNET_ALB_B"]
 
 lambda_authorizer_invoke_arn = "$LAMBDA_AUTH_INVOKE_ARN"
 lambda_authorizer_arn        = "$LAMBDA_AUTH_ARN"
