@@ -76,7 +76,7 @@ aws_region = "$REGION"
 vpc_id             = "$VPC_ID"
 vpc_cidr           = "$VPC_CIDR"
 private_subnet_ids = ["$SUBNET_RESERVATION"]
-lambda_zip_path    = "lambda_auth.zip"
+lambda_source_dir  = "${ROOT}/../lambda-auth/src"
 
 tags = {
   project = "ticketing-platform"

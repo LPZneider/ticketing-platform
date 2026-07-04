@@ -33,10 +33,9 @@ variable "vpc_cidr" {
   nullable = false
 }
 
-variable "lambda_zip_path" {
-  description = "Path local al ZIP del Lambda authorizer"
+variable "lambda_source_dir" {
+  description = "Path al directorio src/ del repo lambda-auth clonado localmente"
   type        = string
-  default     = "lambda_auth.zip"
 }
 
 variable "tags" {

@@ -101,7 +101,8 @@ resource "aws_lambda_function" "auth" {
   role          = aws_iam_role.lambda_auth.arn
   handler       = "index.handler"
   runtime       = "nodejs20.x"
-  filename      = var.lambda_zip_path
+  filename         = data.archive_file.lambda_auth.output_path
+  source_code_hash = data.archive_file.lambda_auth.output_base64sha256
   timeout       = 10
   memory_size   = 256
 
