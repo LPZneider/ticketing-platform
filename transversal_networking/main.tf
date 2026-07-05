@@ -11,6 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+
 # ─── VPC ────────────────────────────────────────────────────────────────────
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -47,6 +48,15 @@ resource "aws_vpc_endpoint" "dynamodb" {
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private.id]
   tags              = merge(local.resource_tags, { Name = "vpce-dynamodb-${var.capacity}-${var.country}-${var.env}" })
+}
+
+# ─── VPC GATEWAY ENDPOINT — S3 (requerido para ECR: layers se descargan de S3) ─
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+  tags              = merge(local.resource_tags, { Name = "vpce-s3-${var.capacity}-${var.country}-${var.env}" })
 }
 
 # ─── VPC INTERFACE ENDPOINT — SQS ───────────────────────────────────────────
@@ -114,6 +124,18 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-dkr-${var.capacity}-${var.country}-${var.env}" })
+}
+
+
+# ─── VPC INTERFACE ENDPOINT — CloudWatch Logs (para ECS log driver) ─────────
+resource "aws_vpc_endpoint" "cloudwatch_logs" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
+  security_group_ids  = [aws_security_group.vpce_sqs.id]
+  private_dns_enabled = true
+  tags                = merge(local.resource_tags, { Name = "vpce-logs-${var.capacity}-${var.country}-${var.env}" })
 }
 
 # ─── SUBNET SECUNDARIA EN us-east-1b (requisito ALB >= 2 AZs) ───────────────

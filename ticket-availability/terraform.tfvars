@@ -14,7 +14,7 @@ tg_availability_arn = "arn:aws:elasticloadbalancing:us-east-1:302780033379:targe
 kms_dynamodb_arn  = "arn:aws:kms:us-east-1:302780033379:key/220ed17a-789b-4f6a-8537-cfefe3812092"
 tickets_table_arn = "arn:aws:dynamodb:us-east-1:302780033379:table/table-ticketing-co-tickets-dev"
 
-container_image = "nginx:latest"
+container_image = "302780033379.dkr.ecr.us-east-1.amazonaws.com/ecr-ticketing-co-ticket-availability-dev:latest"
 desired_count   = 1
 cpu             = 256
 memory          = 512

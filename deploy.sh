@@ -58,15 +58,14 @@ build_push() {
   echo ""
   echo "--- Build Gradle: $svc_repo ---"
   cd "$svc_dir"
-  ./gradlew :applications:app-service:bootJar
-
-  # Copiar el JAR al contexto del Dockerfile
-  local jar
-  jar=$(find "$svc_dir/applications/app-service/build/libs" -name "*.jar" | head -1)
-  cp "$jar" "$svc_dir/deployment/"
+  ./gradlew :app-service:bootJar
 
   echo "--- Docker build & push: $ecr_url:$tag ---"
-  docker build -t "$ecr_url:$tag" "$svc_dir/deployment"
+  # Build context = root del repo para que el ARG JAR_FILE del Dockerfile multi-stage funcione
+  docker build --platform linux/amd64 \
+    -f "$svc_dir/deployment/Dockerfile" \
+    -t "$ecr_url:$tag" \
+    "$svc_dir"
   docker push "$ecr_url:$tag"
   echo "✓ Imagen publicada: $ecr_url:$tag"
 

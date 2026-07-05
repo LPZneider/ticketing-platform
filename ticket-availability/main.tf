@@ -33,6 +33,14 @@ resource "aws_security_group" "ecs" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  egress {
+    description     = "HTTPS to S3 (ECR layer blobs via gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.s3.id]
+  }
+
   tags = merge(local.resource_tags, { Name = "sg-ecs-${local.name}" })
 }
 
