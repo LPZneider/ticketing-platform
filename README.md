@@ -8,13 +8,13 @@ Plataforma de venta de tickets para eventos construida sobre AWS con arquitectur
 
 El sistema permite crear eventos, reservar tickets, procesar pagos y liberar tickets no confirmados de forma automática. Está compuesto por 4 microservicios Java (Spring WebFlux) y una Lambda de autorización:
 
-| Servicio | Responsabilidad |
-|---|---|
-| `ticket-reservation` | Crea eventos y reserva tickets. Publica en SQS para purchase y expiry |
-| `ticket-purchase` | Consume SQS, confirma el pago y marca la orden como `CONFIRMED` |
-| `reservation-expiry` | Consume SQS con delay de 3 min. Si la orden sigue pendiente, elimina los tickets reservados y libera el cupo |
-| `ticket-availability` | Consultas de solo lectura: disponibilidad de eventos y estado de órdenes |
-| `lambda-auth` | Authorizer de API Gateway. Decodifica el JWT y extrae `userId` y `userRole` |
+| Servicio | Responsabilidad | Repositorio |
+|---|---|---|
+| `ticket-reservation` | Crea eventos y reserva tickets. Publica en SQS para purchase y expiry | [ticket-reservation-service](https://github.com/LPZneider/ticket-reservation-service) |
+| `ticket-purchase` | Consume SQS, confirma el pago y marca la orden como `CONFIRMED` | [ticket-purchase-service](https://github.com/LPZneider/ticket-purchase-service) |
+| `reservation-expiry` | Consume SQS con delay de 3 min. Si la orden sigue pendiente, elimina los tickets reservados y libera el cupo | [reservation-expiry-service](https://github.com/LPZneider/reservation-expiry-service) |
+| `ticket-availability` | Consultas de solo lectura: disponibilidad de eventos y estado de órdenes | [ticket-availability-service](https://github.com/LPZneider/ticket-availability-service) |
+| `lambda-auth` | Authorizer de API Gateway. Decodifica el JWT y extrae `userId` y `userRole` | [lambda-auth](https://github.com/LPZneider/lambda-auth) |
 
 ### Flujo principal
 
