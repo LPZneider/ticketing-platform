@@ -34,7 +34,7 @@ resource "aws_iam_role_policy" "task" {
         # Conditional write (optimistic locking) para confirmar o rechazar compra
         Sid    = "DynamoDBConditionalWrite"
         Effect = "Allow"
-        Action = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem"]
+        Action = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:Query"]
         Resource = [var.tickets_table_arn, var.orders_table_arn]
       },
       {

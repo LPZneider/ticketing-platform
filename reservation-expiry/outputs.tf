@@ -1,7 +1,3 @@
-output "sqs_dlq_arn" {
-  value = aws_sqs_queue.dlq.arn
-}
-
 output "ecr_repository_url" {
   value = aws_ecr_repository.svc.repository_url
 }
