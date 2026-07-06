@@ -338,3 +338,29 @@ Respuesta exitosa (`200`):
 ```
 
 Estados posibles de una orden: `PENDING_CONFIRMATION` → `CONFIRMED` | `EXPIRED` | `REJECTED`
+
+---
+
+## Colección de peticiones (Bruno)
+
+En la raíz del repo está [`tickets-events.zip`](./tickets-events.zip): una colección de [Bruno](https://www.usebruno.com/) (formato *open collection*, `.yml`) con los 4 requests que cubren el flujo principal del sistema, apuntando directo al API Gateway del ambiente `dev` ya desplegado.
+
+### Cómo importarla
+
+1. Descomprime `tickets-events.zip` en una carpeta local (Bruno no abre `.zip` directamente).
+2. En Bruno: `File → Open Collection` y selecciona esa carpeta.
+
+### Requests incluidos (en orden)
+
+| # | Nombre | Método | Endpoint | Qué demuestra |
+|---|---|---|---|---|
+| 1 | `create-events` | `POST` | `/api/v1/events` | Crea un evento (`totalCapacity: 1000`) |
+| 2 | `reserve-tickets` | `POST` | `/api/v1/purchases` | Reserva tickets para el `eventId` creado en el paso 1 → orden `PENDING_CONFIRMATION` |
+| 3 | `get-eventId` | `GET` | `/api/v1/events/{eventId}/availability` | Consulta disponibilidad del evento tras la reserva |
+| 4 | `get-ordenId` | `GET` | `/api/v1/orders/{orderId}/status` | Consulta el estado de la orden (`CONFIRMED` una vez que `ticket-purchase` la procese de forma asíncrona) |
+
+### Notas
+
+- Cada request trae un `Authorization: Bearer <jwt-fake>` de ejemplo. Funciona contra este ambiente porque, como se documenta en [Decisiones arquitectónicas](#decisiones-arquitectónicas), el Lambda authorizer decodifica el JWT sin verificar la firma — **no usar este mismo token contra un ambiente que sí valide firma**.
+- Los valores de `eventId`/`orderId` en los pasos 3 y 4 quedaron fijos de una ejecución anterior; reemplázalos por los que te devuelvan los pasos 1 y 2 al correr la colección de nuevo.
+- Los headers `messageId` y `region` son obligatorios en todos los endpoints (los valida `HeaderValidator` en cada microservicio).
