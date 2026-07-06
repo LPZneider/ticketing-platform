@@ -11,7 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ─── SECRETS MANAGER — secretos del authorizer ──────────────────────────────
+# ─── SECRETS MANAGER — authorizer secrets ───────────────────────────────────
 resource "aws_secretsmanager_secret" "auth" {
   name                    = local.secret_name
   description             = "Auth secrets for Lambda authorizer - ${var.env}"
@@ -35,6 +35,12 @@ resource "aws_iam_role" "lambda_auth" {
   tags = local.resource_tags
 }
 
+# Managed policy for VPC access (ec2:CreateNetworkInterface, etc.)
+resource "aws_iam_role_policy_attachment" "lambda_vpc" {
+  role       = aws_iam_role.lambda_auth.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy" "lambda_auth" {
   name = "policy-lambda-auth-${var.env}"
   role = aws_iam_role.lambda_auth.id
@@ -43,36 +49,16 @@ resource "aws_iam_role_policy" "lambda_auth" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "SecretsManagerRead"
-        Effect = "Allow"
-        Action = ["secretsmanager:GetSecretValue"]
+        Sid      = "SecretsManagerRead"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
         Resource = [aws_secretsmanager_secret.auth.arn]
-      },
-      {
-        Sid    = "CloudWatchLogs"
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"
-      },
-      {
-        Sid    = "VPCAccess"
-        Effect = "Allow"
-        Action = [
-          "ec2:CreateNetworkInterface",
-          "ec2:DescribeNetworkInterfaces",
-          "ec2:DeleteNetworkInterface"
-        ]
-        Resource = "*"
       }
     ]
   })
 }
 
-# ─── SECURITY GROUP — Lambda en VPC ─────────────────────────────────────────
+# ─── SECURITY GROUP — Lambda in VPC ─────────────────────────────────────────
 resource "aws_security_group" "lambda_auth" {
   name        = "sgrp-lambda-auth-${var.capacity}-${var.country}-${var.env}"
   description = "Lambda authorizer - egress only to VPC endpoints"
@@ -101,8 +87,8 @@ resource "aws_lambda_function" "auth" {
   role          = aws_iam_role.lambda_auth.arn
   handler       = "index.handler"
   runtime       = "nodejs20.x"
-  filename         = data.archive_file.lambda_auth.output_path
-  source_code_hash = data.archive_file.lambda_auth.output_base64sha256
+  filename         = local.lambda_zip_path
+  source_code_hash = local.lambda_zip_hash
   timeout       = 10
   memory_size   = 256
 
@@ -118,7 +104,11 @@ resource "aws_lambda_function" "auth" {
     security_group_ids = [aws_security_group.lambda_auth.id]
   }
 
-  depends_on = [aws_cloudwatch_log_group.lambda_auth]
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_auth,
+    aws_iam_role_policy_attachment.lambda_vpc,
+    aws_iam_role_policy.lambda_auth,
+  ]
 
   tags = local.resource_tags
 }

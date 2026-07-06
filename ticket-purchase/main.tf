@@ -15,12 +15,12 @@ provider "aws" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "sqs-${var.capacity}-${var.country}-purchase-dlq-${var.env}"
   kms_master_key_id         = var.kms_sqs_arn
-  message_retention_seconds = 1209600 # 14 días
+  message_retention_seconds = 1209600 # 14 days
   tags                      = local.resource_tags
 }
 
 # Redrive policy en la cola P (definida en ticket-reservation)
-# Se aplica aquí via aws_sqs_queue_redrive_policy para no crear dependencia circular
+# Applied here via aws_sqs_queue_redrive_policy to avoid circular dependency
 resource "aws_sqs_queue_redrive_policy" "purchase" {
   queue_url = var.sqs_purchase_url
   redrive_policy = jsonencode({
@@ -29,7 +29,7 @@ resource "aws_sqs_queue_redrive_policy" "purchase" {
   })
 }
 
-# ─── SECURITY GROUP — sin ingress (solo consume SQS vía endpoint) ────────────
+# ─── SECURITY GROUP — no ingress (SQS consumed via VPC endpoint only) ────────
 resource "aws_security_group" "ecs" {
   name        = "sgrp-ecs-${local.name}"
   description = "ticket-purchase ECS task - no inbound traffic"
@@ -41,6 +41,22 @@ resource "aws_security_group" "ecs" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description     = "HTTPS to S3 (ECR layer blobs via gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.s3.id]
+  }
+
+  egress {
+    description     = "HTTPS to DynamoDB (gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.dynamodb.id]
   }
 
   tags = merge(local.resource_tags, { Name = "sg-ecs-${local.name}" })
@@ -72,6 +88,7 @@ resource "aws_ecs_task_definition" "svc" {
       { name = "AWS_REGION", value = var.aws_region },
       { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
       { name = "ORDERS_TABLE_NAME", value = local.orders_table_name },
+      { name = "AWS_DYNAMODB_ENDPOINT", value = "https://dynamodb.${var.aws_region}.amazonaws.com" },
       { name = "PURCHASE_QUEUE_URL", value = var.sqs_purchase_url },
       { name = "PURCHASE_QUEUE_NAME", value = local.purchase_queue_name }
     ]

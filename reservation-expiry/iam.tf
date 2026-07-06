@@ -31,11 +31,11 @@ resource "aws_iam_role_policy" "task" {
     Version = "2012-10-17"
     Statement = [
       {
-        # Solo lee y libera tickets RESERVED → AVAILABLE con conditional write
+        # Reads and deletes RESERVED tickets with conditional write
         Sid    = "DynamoDBConditionalUpdate"
         Effect = "Allow"
-        Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
-        Resource = [var.tickets_table_arn]
+        Action = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+        Resource = [var.tickets_table_arn, var.orders_table_arn]
       },
       {
         Sid    = "SQSConsume"

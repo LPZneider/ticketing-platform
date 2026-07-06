@@ -20,6 +20,7 @@ variable "sqs_expiry_url" { type = string }
 variable "kms_sqs_arn" { type = string }
 variable "kms_dynamodb_arn" { type = string }
 variable "tickets_table_arn" { type = string }
+variable "orders_table_arn" { type = string }
 
 variable "container_image" {
   type = string

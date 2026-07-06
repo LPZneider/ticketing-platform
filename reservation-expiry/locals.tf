@@ -3,6 +3,7 @@ locals {
   name = "${var.capacity}-${var.country}-${local.svc}-${var.env}"
 
   tickets_table_name = element(split("/", var.tickets_table_arn), 1)
+  orders_table_name  = element(split("/", var.orders_table_arn), 1)
   expiry_queue_name  = element(split("/", var.sqs_expiry_url), 4)
 
   resource_tags = merge(var.tags, {
