@@ -38,6 +38,14 @@ ticket-reservation
 
 ---
 
+## Diagrama de arquitectura
+
+![Arquitectura de la solución](./docs/architecture.png)
+
+> Diagrama interactivo (componentes, flujos y detalle de cada módulo): [Ver en Lucidchart](https://lucid.app/lucidchart/REEMPLAZAR-CON-EL-LINK/edit)
+
+---
+
 ## Estructura del repositorio
 
 ```
@@ -199,17 +207,7 @@ Cada módulo guarda su `terraform.tfstate` localmente. Para producción se debe 
 
 ## Ejemplos de uso de los endpoints
 
-La URL base es el endpoint del API Gateway desplegado. Todos los endpoints requieren el header `Authorization: Bearer <token>`.
-
-**Token de prueba (admin):**
-```
-eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJzdWIiOiAidXNlci1hZG1pbi0wMDEiLCAicm9sZSI6ICJhZG1pbiIsICJ1c2VySWQiOiAidXNlci1hZG1pbi0wMDEiLCAidXNlclJvbGUiOiAiYWRtaW4ifQ.fakesig
-```
-
-**Token de prueba (usuario):**
-```
-eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJzdWIiOiAidXNlci0xMjM0NTYiLCAicm9sZSI6ICJ1c2VyIiwgInVzZXJJZCI6ICJ1c2VyLTEyMzQ1NiIsICJ1c2VyUm9sZSI6ICJ1c2VyIn0.fakesig
-```
+La URL base es el endpoint del API Gateway desplegado. Todos los endpoints requieren el header `Authorization: Bearer <token>` con un JWT válido emitido para el usuario (ver `auth/`).
 
 ---
 
