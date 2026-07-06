@@ -31,19 +31,20 @@ resource "aws_iam_role_policy" "task" {
     Version = "2012-10-17"
     Statement = [
       {
-        # Read-only: solo consultas de disponibilidad
         Sid    = "DynamoDBReadOnly"
         Effect = "Allow"
-        Action = ["dynamodb:GetItem", "dynamodb:Query"]
+        Action = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         Resource = [
           var.tickets_table_arn,
-          "${var.tickets_table_arn}/index/idx_status"
+          "${var.tickets_table_arn}/index/*",
+          var.orders_table_arn,
+          "${var.orders_table_arn}/index/*"
         ]
       },
       {
         Sid    = "KMSDecrypt"
         Effect = "Allow"
-        Action = ["kms:Decrypt", "kms:DescribeKey"]
+        Action = ["kms:Decrypt", "kms:DescribeKey", "kms:GenerateDataKey"]
         Resource = [var.kms_dynamodb_arn]
       }
     ]

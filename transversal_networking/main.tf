@@ -11,6 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+
 # ─── VPC ────────────────────────────────────────────────────────────────────
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -19,7 +20,7 @@ resource "aws_vpc" "main" {
   tags                 = merge(local.resource_tags, { Name = "vpc-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── SUBNETS PRIVADAS (una por servicio) ────────────────────────────────────
+# ─── PRIVATE SUBNETS (one per service) ──────────────────────────────────────
 resource "aws_subnet" "private" {
   for_each          = var.subnet_cidrs
   vpc_id            = aws_vpc.main.id
@@ -28,7 +29,7 @@ resource "aws_subnet" "private" {
   tags              = merge(local.resource_tags, { Name = "subnet-${var.capacity}-${var.country}-${each.key}-${var.env}" })
 }
 
-# ─── ROUTE TABLE PRIVADA ────────────────────────────────────────────────────
+# ─── PRIVATE ROUTE TABLE ────────────────────────────────────────────────────
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
   tags   = merge(local.resource_tags, { Name = "rt-private-${var.capacity}-${var.country}-${var.env}" })
@@ -40,7 +41,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# ─── VPC GATEWAY ENDPOINT — DynamoDB (sin NAT) ──────────────────────────────
+# ─── VPC GATEWAY ENDPOINT — DynamoDB (no NAT required) ──────────────────────
 resource "aws_vpc_endpoint" "dynamodb" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
@@ -49,9 +50,18 @@ resource "aws_vpc_endpoint" "dynamodb" {
   tags              = merge(local.resource_tags, { Name = "vpce-dynamodb-${var.capacity}-${var.country}-${var.env}" })
 }
 
+# ─── VPC GATEWAY ENDPOINT — S3 (required for ECR: layers are downloaded from S3) ─
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+  tags              = merge(local.resource_tags, { Name = "vpce-s3-${var.capacity}-${var.country}-${var.env}" })
+}
+
 # ─── VPC INTERFACE ENDPOINT — SQS ───────────────────────────────────────────
 resource "aws_security_group" "vpce_sqs" {
-  name        = "sg-vpce-sqs-${var.capacity}-${var.country}-${var.env}"
+  name        = "sgrp-vpce-sqs-${var.capacity}-${var.country}-${var.env}"
   description = "Allow HTTPS from VPC to SQS endpoint"
   vpc_id      = aws_vpc.main.id
 
@@ -78,29 +88,29 @@ resource "aws_vpc_endpoint" "sqs" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.sqs"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-sqs-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── VPC INTERFACE ENDPOINT — Secrets Manager (para Lambda auth) ────────────
+# ─── VPC INTERFACE ENDPOINT — Secrets Manager (for Lambda auth) ─────────────
 resource "aws_vpc_endpoint" "secretsmanager" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-secretsmanager-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── VPC INTERFACE ENDPOINT — ECR (para ECS Fargate pull de imágenes) ───────
+# ─── VPC INTERFACE ENDPOINT — ECR (for ECS Fargate image pull) ──────────────
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-api-${var.capacity}-${var.country}-${var.env}" })
@@ -110,8 +120,33 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [for s in aws_subnet.private : s.id]
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
   security_group_ids  = [aws_security_group.vpce_sqs.id]
   private_dns_enabled = true
   tags                = merge(local.resource_tags, { Name = "vpce-ecr-dkr-${var.capacity}-${var.country}-${var.env}" })
+}
+
+
+# ─── VPC INTERFACE ENDPOINT — CloudWatch Logs (for ECS log driver) ──────────
+resource "aws_vpc_endpoint" "cloudwatch_logs" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private["ticket-reservation"].id]
+  security_group_ids  = [aws_security_group.vpce_sqs.id]
+  private_dns_enabled = true
+  tags                = merge(local.resource_tags, { Name = "vpce-logs-${var.capacity}-${var.country}-${var.env}" })
+}
+
+# ─── SECONDARY SUBNET in us-east-1b (NLB requires >= 2 AZs) ────────────────
+resource "aws_subnet" "alb_secondary" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.10.0/24"
+  availability_zone = "${var.aws_region}b"
+  tags              = merge(local.resource_tags, { Name = "subnet-${var.capacity}-${var.country}-alb-b-${var.env}" })
+}
+
+resource "aws_route_table_association" "alb_secondary" {
+  subnet_id      = aws_subnet.alb_secondary.id
+  route_table_id = aws_route_table.private.id
 }

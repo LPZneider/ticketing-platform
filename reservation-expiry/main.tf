@@ -13,7 +13,7 @@ provider "aws" {
 
 # ─── SECURITY GROUP — sin ingress ────────────────────────────────────────────
 resource "aws_security_group" "ecs" {
-  name        = "sg-ecs-${local.name}"
+  name        = "sgrp-ecs-${local.name}"
   description = "reservation-expiry ECS task - no inbound traffic"
   vpc_id      = var.vpc_id
 
@@ -23,6 +23,22 @@ resource "aws_security_group" "ecs" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description     = "HTTPS to S3 (ECR layer blobs via gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.s3.id]
+  }
+
+  egress {
+    description     = "HTTPS to DynamoDB (gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.dynamodb.id]
   }
 
   tags = merge(local.resource_tags, { Name = "sg-ecs-${local.name}" })
@@ -51,8 +67,12 @@ resource "aws_ecs_task_definition" "svc" {
     essential = true
     environment = [
       { name = "ENV", value = var.env },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
+      { name = "ORDERS_TABLE_NAME", value = local.orders_table_name },
+      { name = "AWS_DYNAMODB_ENDPOINT", value = "https://dynamodb.${var.aws_region}.amazonaws.com" },
       { name = "EXPIRY_QUEUE_URL", value = var.sqs_expiry_url },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "EXPIRY_QUEUE_NAME", value = local.expiry_queue_name }
     ]
     logConfiguration = {
       logDriver = "awslogs"

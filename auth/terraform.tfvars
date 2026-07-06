@@ -3,18 +3,10 @@ capacity   = "ticketing"
 country    = "co"
 aws_region = "us-east-1"
 
-# Outputs de transversal_networking:
-# terraform -chdir=../transversal_networking output vpc_id
-vpc_id = "<transversal_networking.vpc_id>"
-
-# terraform -chdir=../transversal_networking output vpc_cidr
-vpc_cidr = "<transversal_networking.vpc_cidr>"
-
-# terraform -chdir=../transversal_networking output -json private_subnet_ids
-# Usar cualquiera de las subnets del mapa, ej: private_subnet_ids["ticket-reservation"]
-private_subnet_ids = ["<transversal_networking.private_subnet_ids[ticket-reservation]>"]
-
-lambda_zip_path = "lambda_auth.zip"
+vpc_id             = "vpc-089a7b802dfd99dfc"
+vpc_cidr           = "10.0.0.0/16"
+private_subnet_ids = ["subnet-08cb91179be09c056"]
+lambda_source_dir = "/home/neider/Documents/prueba/ticketing-platform/../lambda-auth/src"
 
 tags = {
   project = "ticketing-platform"
