@@ -16,6 +16,7 @@ variable "tg_availability_arn" { type = string }
 
 variable "kms_dynamodb_arn" { type = string }
 variable "tickets_table_arn" { type = string }
+variable "orders_table_arn" { type = string }
 
 variable "container_image" {
   type = string

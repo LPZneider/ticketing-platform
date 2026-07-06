@@ -118,6 +118,28 @@ TICKETS_TABLE_ARN=$(get_output transversal_data tickets_table_arn)
 ORDERS_TABLE_ARN=$(get_output transversal_data orders_table_arn)
 
 # ─── PASO 3: auth ────────────────────────────────────────────────────────────
+# Genera un zip de Lambda placeholder si no existe el repo lambda-auth
+LAMBDA_AUTH_SRC="${ROOT}/../lambda-auth/src"
+LAMBDA_AUTH_ZIP="${ROOT}/auth/lambda_auth_built.zip"
+if [ ! -d "$LAMBDA_AUTH_SRC" ]; then
+  echo "[WARN] lambda-auth/src no encontrado, generando placeholder..."
+  TMPDIR_LAMBDA=$(mktemp -d)
+  cat > "$TMPDIR_LAMBDA/index.js" <<'JSEOF'
+exports.handler = async (event) => ({
+  principalId: 'placeholder',
+  policyDocument: {
+    Version: '2012-10-17',
+    Statement: [{ Action: 'execute-api:Invoke', Effect: 'Allow', Resource: event.methodArn }]
+  }
+});
+JSEOF
+  (cd "$TMPDIR_LAMBDA" && zip -q "$LAMBDA_AUTH_ZIP" index.js)
+  rm -rf "$TMPDIR_LAMBDA"
+  LAMBDA_TFVAR="lambda_zip_path  = \"$LAMBDA_AUTH_ZIP\""
+else
+  LAMBDA_TFVAR="lambda_source_dir = \"$LAMBDA_AUTH_SRC\""
+fi
+
 cat > "$ROOT/auth/terraform.tfvars" <<EOF
 env        = "dev"
 capacity   = "ticketing"
@@ -127,7 +149,7 @@ aws_region = "$REGION"
 vpc_id             = "$VPC_ID"
 vpc_cidr           = "$VPC_CIDR"
 private_subnet_ids = ["$SUBNET_RESERVATION"]
-lambda_source_dir  = "${ROOT}/../lambda-auth/src"
+$LAMBDA_TFVAR
 
 tags = {
   project = "ticketing-platform"
@@ -315,13 +337,14 @@ vpc_id    = "$VPC_ID"
 vpc_cidr  = "$VPC_CIDR"
 subnet_id = "$SUBNET_EXPIRY"
 
-ecs_cluster_arn = "$ECS_CLUSTER_ARN"
-sqs_expiry_arn  = "$SQS_EXPIRY_ARN"
-sqs_expiry_url  = "$SQS_EXPIRY_URL"
+ecs_cluster_arn  = "$ECS_CLUSTER_ARN"
+sqs_expiry_arn   = "$SQS_EXPIRY_ARN"
+sqs_expiry_url   = "$SQS_EXPIRY_URL"
 
 kms_sqs_arn       = "$KMS_SQS_ARN"
 kms_dynamodb_arn  = "$KMS_DYNAMO_ARN"
 tickets_table_arn = "$TICKETS_TABLE_ARN"
+orders_table_arn  = "$ORDERS_TABLE_ARN"
 
 container_image = "nginx:latest"
 desired_count   = 1
@@ -345,13 +368,14 @@ vpc_id    = "$VPC_ID"
 vpc_cidr  = "$VPC_CIDR"
 subnet_id = "$SUBNET_EXPIRY"
 
-ecs_cluster_arn = "$ECS_CLUSTER_ARN"
-sqs_expiry_arn  = "$SQS_EXPIRY_ARN"
-sqs_expiry_url  = "$SQS_EXPIRY_URL"
+ecs_cluster_arn  = "$ECS_CLUSTER_ARN"
+sqs_expiry_arn   = "$SQS_EXPIRY_ARN"
+sqs_expiry_url   = "$SQS_EXPIRY_URL"
 
 kms_sqs_arn       = "$KMS_SQS_ARN"
 kms_dynamodb_arn  = "$KMS_DYNAMO_ARN"
 tickets_table_arn = "$TICKETS_TABLE_ARN"
+orders_table_arn  = "$ORDERS_TABLE_ARN"
 
 container_image = "$ECR_EXPIRY_URL:latest"
 desired_count   = 1
@@ -381,6 +405,7 @@ tg_availability_arn = "$TG_AVAILABILITY_ARN"
 
 kms_dynamodb_arn  = "$KMS_DYNAMO_ARN"
 tickets_table_arn = "$TICKETS_TABLE_ARN"
+orders_table_arn  = "$ORDERS_TABLE_ARN"
 
 container_image = "nginx:latest"
 desired_count   = 1
@@ -410,6 +435,7 @@ tg_availability_arn = "$TG_AVAILABILITY_ARN"
 
 kms_dynamodb_arn  = "$KMS_DYNAMO_ARN"
 tickets_table_arn = "$TICKETS_TABLE_ARN"
+orders_table_arn  = "$ORDERS_TABLE_ARN"
 
 container_image = "$ECR_AVAILABILITY_URL:latest"
 desired_count   = 1

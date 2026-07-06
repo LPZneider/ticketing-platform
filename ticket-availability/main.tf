@@ -18,11 +18,11 @@ resource "aws_security_group" "ecs" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "HTTP from ALB"
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [var.sg_alb_id]
+    description = "HTTP from NLB (source IP preserved)"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -39,6 +39,14 @@ resource "aws_security_group" "ecs" {
     to_port         = 443
     protocol        = "tcp"
     prefix_list_ids = [data.aws_prefix_list.s3.id]
+  }
+
+  egress {
+    description     = "HTTPS to DynamoDB (gateway endpoint)"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.dynamodb.id]
   }
 
   tags = merge(local.resource_tags, { Name = "sg-ecs-${local.name}" })
@@ -72,8 +80,17 @@ resource "aws_ecs_task_definition" "svc" {
     environment = [
       { name = "ENV", value = var.env },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name }
+      { name = "TICKETS_TABLE_NAME", value = local.tickets_table_name },
+      { name = "ORDERS_TABLE_NAME", value = local.orders_table_name },
+      { name = "AWS_DYNAMODB_ENDPOINT", value = "https://dynamodb.${var.aws_region}.amazonaws.com" }
     ]
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval    = 30
+      timeout     = 10
+      retries     = 3
+      startPeriod = 60
+    }
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -89,11 +106,12 @@ resource "aws_ecs_task_definition" "svc" {
 
 # ─── ECS SERVICE ─────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "svc" {
-  name            = "svc-${local.name}"
-  cluster         = var.ecs_cluster_arn
-  task_definition = aws_ecs_task_definition.svc.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+  name                               = "svc-${local.name}"
+  cluster                            = var.ecs_cluster_arn
+  task_definition                    = aws_ecs_task_definition.svc.arn
+  desired_count                      = var.desired_count
+  launch_type                        = "FARGATE"
+  health_check_grace_period_seconds  = 120
 
   network_configuration {
     subnets          = [var.subnet_id]

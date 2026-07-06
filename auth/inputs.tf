@@ -34,8 +34,15 @@ variable "vpc_cidr" {
 }
 
 variable "lambda_source_dir" {
-  description = "Path al directorio src/ del repo lambda-auth clonado localmente"
+  description = "Path al directorio src/ del repo lambda-auth. Si está vacío se usa lambda_zip_path."
   type        = string
+  default     = ""
+}
+
+variable "lambda_zip_path" {
+  description = "Path a un zip pre-construido. Usado cuando lambda_source_dir está vacío."
+  type        = string
+  default     = ""
 }
 
 variable "tags" {

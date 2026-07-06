@@ -34,9 +34,25 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description = "TCP to ECS tasks"
+    description = "TCP to ECS tasks (reservation)"
     from_port   = 8080
     to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "TCP to ECS tasks (availability)"
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "Ephemeral ports for health check responses"
+    from_port   = 1024
+    to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
@@ -52,7 +68,9 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.private_subnet_ids
 
-  enable_deletion_protection = false
+  enable_deletion_protection         = false
+  enable_cross_zone_load_balancing   = true
+  enforce_security_group_inbound_rules_on_private_link_traffic = "off"
 
   tags = merge(local.resource_tags, { Name = "nlb-${var.capacity}-${var.country}-${var.env}" })
 }
@@ -165,9 +183,21 @@ resource "aws_lambda_permission" "apigw_invoke_authorizer" {
 }
 
 # ─── RECURSOS API ─────────────────────────────────────────────────────────────
-resource "aws_api_gateway_resource" "events" {
+resource "aws_api_gateway_resource" "api" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  path_part   = "api"
+}
+
+resource "aws_api_gateway_resource" "v1" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.api.id
+  path_part   = "v1"
+}
+
+resource "aws_api_gateway_resource" "events" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.v1.id
   path_part   = "events"
 }
 
@@ -185,13 +215,13 @@ resource "aws_api_gateway_resource" "event_availability" {
 
 resource "aws_api_gateway_resource" "purchases" {
   rest_api_id = aws_api_gateway_rest_api.main.id
-  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  parent_id   = aws_api_gateway_resource.v1.id
   path_part   = "purchases"
 }
 
 resource "aws_api_gateway_resource" "orders" {
   rest_api_id = aws_api_gateway_rest_api.main.id
-  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  parent_id   = aws_api_gateway_resource.v1.id
   path_part   = "orders"
 }
 
@@ -201,7 +231,13 @@ resource "aws_api_gateway_resource" "order_id" {
   path_part   = "{orderId}"
 }
 
-# ─── POST /events (admin) → ticket-reservation-service ───────────────────────
+resource "aws_api_gateway_resource" "order_status" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.order_id.id
+  path_part   = "status"
+}
+
+# ─── POST /events (admin) → ticket-reservation-service ───────────────────────────────────────────
 resource "aws_api_gateway_method" "events_post" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.events.id
@@ -219,7 +255,7 @@ resource "aws_api_gateway_integration" "events_post" {
   http_method             = aws_api_gateway_method.events_post.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${aws_lb.main.dns_name}:8080/events"
+  uri                     = "http://${aws_lb.main.dns_name}:8080/api/v1/events"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -246,7 +282,7 @@ resource "aws_api_gateway_integration" "events_get" {
   http_method             = aws_api_gateway_method.events_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}:8081/events"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/api/v1/events"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -274,7 +310,7 @@ resource "aws_api_gateway_integration" "event_availability_get" {
   http_method             = aws_api_gateway_method.event_availability_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}:8081/events/{eventId}/availability"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/api/v1/events/{eventId}/availability"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -302,7 +338,7 @@ resource "aws_api_gateway_integration" "purchases_post" {
   http_method             = aws_api_gateway_method.purchases_post.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${aws_lb.main.dns_name}:8080/purchases"
+  uri                     = "http://${aws_lb.main.dns_name}:8080/api/v1/purchases"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
@@ -314,7 +350,7 @@ resource "aws_api_gateway_integration" "purchases_post" {
 # ─── GET /orders/{orderId} → ticket-availability-service ──────────────────────
 resource "aws_api_gateway_method" "orders_id_get" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
-  resource_id   = aws_api_gateway_resource.order_id.id
+  resource_id   = aws_api_gateway_resource.order_status.id
   http_method   = "GET"
   authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.lambda.id
@@ -326,11 +362,11 @@ resource "aws_api_gateway_method" "orders_id_get" {
 
 resource "aws_api_gateway_integration" "orders_id_get" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
-  resource_id             = aws_api_gateway_resource.order_id.id
+  resource_id             = aws_api_gateway_resource.order_status.id
   http_method             = aws_api_gateway_method.orders_id_get.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${aws_lb.main.dns_name}:8081/orders/{orderId}"
+  uri                     = "http://${aws_lb.main.dns_name}:8081/api/v1/orders/{orderId}/status"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
   request_parameters = {
