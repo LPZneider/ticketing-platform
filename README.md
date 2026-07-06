@@ -40,9 +40,9 @@ ticket-reservation
 
 ## Diagrama de arquitectura
 
-![Arquitectura de la solución](./docs/architecture.png)
+![Arquitectura de la solución](./architecture.png)
 
-> Diagrama interactivo (componentes, flujos y detalle de cada módulo): [Ver en Lucidchart](https://lucid.app/lucidchart/REEMPLAZAR-CON-EL-LINK/edit)
+> Diagrama interactivo (componentes, flujos y detalle de cada módulo): [Ver en Lucidchart](https://lucid.app/lucidchart/949bb681-14f8-4c2b-be92-b4837476e143/edit?viewport_loc=-573%2C-867%2C3584%2C1685%2C0_0&invitationId=inv_7433f027-585e-4fb3-b6d2-00aef70f73bd)
 
 ---
 
