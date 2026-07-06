@@ -21,14 +21,14 @@ resource "aws_sqs_queue" "purchase" {
 }
 
 # ─── SQS "R" — reservation-expiry ──────────────────────────────────────────
-# delay_seconds se fija en la cola (no en el mensaje) de forma intencional:
-# así todos los mensajes heredan el delay de 10 min sin que el productor deba
-# especificarlo. El productor NO debe enviar DelaySeconds por mensaje en esta
-# cola para evitar sumar delays (máximo SQS: 900 s).
+# delay_seconds is set on the queue (not on the message) intentionally:
+# all messages inherit the queue delay without the producer needing to set it.
+# The producer MUST NOT send DelaySeconds per message on this queue
+# to avoid stacking delays (SQS max: 900 s).
 resource "aws_sqs_queue" "expiry" {
   name                       = "sqs-${var.capacity}-${var.country}-reservation-expiry-${var.env}"
   kms_master_key_id          = var.kms_sqs_arn
-  delay_seconds              = 600
+  delay_seconds              = 180
   message_retention_seconds  = 3600
   visibility_timeout_seconds = 30
   tags                       = local.resource_tags

@@ -11,7 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ─── SECRETS MANAGER — secretos del authorizer ──────────────────────────────
+# ─── SECRETS MANAGER — authorizer secrets ───────────────────────────────────
 resource "aws_secretsmanager_secret" "auth" {
   name                    = local.secret_name
   description             = "Auth secrets for Lambda authorizer - ${var.env}"
@@ -35,7 +35,7 @@ resource "aws_iam_role" "lambda_auth" {
   tags = local.resource_tags
 }
 
-# Managed policy para VPC access (ec2:CreateNetworkInterface, etc.)
+# Managed policy for VPC access (ec2:CreateNetworkInterface, etc.)
 resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   role       = aws_iam_role.lambda_auth.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "lambda_auth" {
   })
 }
 
-# ─── SECURITY GROUP — Lambda en VPC ─────────────────────────────────────────
+# ─── SECURITY GROUP — Lambda in VPC ─────────────────────────────────────────
 resource "aws_security_group" "lambda_auth" {
   name        = "sgrp-lambda-auth-${var.capacity}-${var.country}-${var.env}"
   description = "Lambda authorizer - egress only to VPC endpoints"

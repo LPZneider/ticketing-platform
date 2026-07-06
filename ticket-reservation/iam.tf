@@ -19,7 +19,7 @@ resource "aws_iam_role_policy_attachment" "execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ─── IAM TASK ROLE (permisos de la aplicación) ───────────────────────────────
+# ─── IAM TASK ROLE (application permissions) ────────────────────────────────
 resource "aws_iam_role" "task" {
   name = "role-task-${local.name}"
 
@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "task" {
     Version = "2012-10-17"
     Statement = [
       {
-        # Escribe ticket en RESERVED + lee para validar
+        # Writes ticket as RESERVED + reads to validate
         Sid    = "DynamoDBWrite"
         Effect = "Allow"
         Action = [
@@ -57,7 +57,7 @@ resource "aws_iam_role_policy" "task" {
         ]
       },
       {
-        # Publica en cola P y cola R
+        # Publishes to purchase queue and expiry queue
         Sid    = "SQSSend"
         Effect = "Allow"
         Action = [

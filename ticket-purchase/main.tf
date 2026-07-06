@@ -15,12 +15,12 @@ provider "aws" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "sqs-${var.capacity}-${var.country}-purchase-dlq-${var.env}"
   kms_master_key_id         = var.kms_sqs_arn
-  message_retention_seconds = 1209600 # 14 días
+  message_retention_seconds = 1209600 # 14 days
   tags                      = local.resource_tags
 }
 
 # Redrive policy en la cola P (definida en ticket-reservation)
-# Se aplica aquí via aws_sqs_queue_redrive_policy para no crear dependencia circular
+# Applied here via aws_sqs_queue_redrive_policy to avoid circular dependency
 resource "aws_sqs_queue_redrive_policy" "purchase" {
   queue_url = var.sqs_purchase_url
   redrive_policy = jsonencode({
@@ -29,7 +29,7 @@ resource "aws_sqs_queue_redrive_policy" "purchase" {
   })
 }
 
-# ─── SECURITY GROUP — sin ingress (solo consume SQS vía endpoint) ────────────
+# ─── SECURITY GROUP — no ingress (SQS consumed via VPC endpoint only) ────────
 resource "aws_security_group" "ecs" {
   name        = "sgrp-ecs-${local.name}"
   description = "ticket-purchase ECS task - no inbound traffic"

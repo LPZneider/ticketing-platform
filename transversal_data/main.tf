@@ -11,7 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ─── KMS — cifrado DynamoDB ──────────────────────────────────────────────────
+# ─── KMS — DynamoDB encryption ──────────────────────────────────────────────
 resource "aws_kms_key" "dynamodb" {
   description             = "KMS key for DynamoDB tables - ${var.capacity}-${var.country}-${var.env}"
   deletion_window_in_days = 7
@@ -53,7 +53,7 @@ resource "aws_kms_alias" "dynamodb" {
   target_key_id = aws_kms_key.dynamodb.key_id
 }
 
-# ─── DYNAMODB — tabla de tickets (inventario + estado) ──────────────────────
+# ─── DYNAMODB — tickets table (inventory + status) ──────────────────────────
 # Hash key: ticketId | Range key: eventType
 # Conditional writes / optimistic locking via version attribute
 resource "aws_dynamodb_table" "tickets" {
@@ -77,7 +77,7 @@ resource "aws_dynamodb_table" "tickets" {
     type = "S"
   }
 
-  # GSI para consultar por estado (ticket-availability-service)
+  # GSI to query by status (ticket-availability-service)
   global_secondary_index {
     name            = "idx_status"
     hash_key        = "status"
@@ -85,7 +85,7 @@ resource "aws_dynamodb_table" "tickets" {
     projection_type = "ALL"
   }
 
-  # TTL para expirar reservas automáticamente como respaldo
+  # TTL to auto-expire reservations as a fallback
   ttl {
     attribute_name = "expiration_time"
     enabled        = true
@@ -103,7 +103,7 @@ resource "aws_dynamodb_table" "tickets" {
   tags = merge(local.resource_tags, { Name = "table-${var.capacity}-${var.country}-tickets-${var.env}" })
 }
 
-# ─── DYNAMODB — tabla de órdenes (historial de compras) ─────────────────────
+# ─── DYNAMODB — orders table (purchase history) ─────────────────────────────
 resource "aws_dynamodb_table" "orders" {
   name         = "table-${var.capacity}-${var.country}-orders-${var.env}"
   billing_mode = "PAY_PER_REQUEST"

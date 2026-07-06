@@ -1,6 +1,6 @@
 data "aws_caller_identity" "current" {}
 
-# Empaqueta desde source_dir si se provee, si no usa el zip pre-construido
+# Packages from source_dir if provided, otherwise uses the pre-built zip
 data "archive_file" "lambda_auth" {
   count       = var.lambda_source_dir != "" ? 1 : 0
   type        = "zip"

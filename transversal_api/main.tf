@@ -11,7 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ─── SECURITY GROUP — ALB interno ───────────────────────────────────────────
+# ─── SECURITY GROUP — internal NLB ─────────────────────────────────────────
 resource "aws_security_group" "alb" {
   name        = "sgrp-nlb-${var.capacity}-${var.country}-${var.env}"
   description = "NLB internal - allows API Gateway VPC Link traffic"
@@ -60,7 +60,7 @@ resource "aws_security_group" "alb" {
   tags = merge(local.resource_tags, { Name = "sg-nlb-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── NLB INTERNO (REST API Gateway VPC Link solo soporta NLB) ───────────────
+# ─── INTERNAL NLB (REST API Gateway VPC Link only supports NLB) ────────────
 resource "aws_lb" "main" {
   name               = "nlb-${var.capacity}-${var.country}-${var.env}"
   internal           = true
@@ -75,7 +75,7 @@ resource "aws_lb" "main" {
   tags = merge(local.resource_tags, { Name = "nlb-${var.capacity}-${var.country}-${var.env}" })
 }
 
-# ─── TARGET GROUPS — uno por servicio HTTP ──────────────────────────────────
+# ─── TARGET GROUPS — one per HTTP service ──────────────────────────────────
 resource "aws_lb_target_group" "reservation" {
   name        = "tg-reservation-${var.env}"
   port        = 8080
@@ -112,8 +112,8 @@ resource "aws_lb_target_group" "availability" {
   tags = local.resource_tags
 }
 
-# ─── NLB LISTENERS — un puerto por servicio (routing por método en API GW) ──
-# Puerto 8080 → ticket-reservation (POST /events, POST /purchases)
+# ─── NLB LISTENERS — one port per service (method-based routing in API GW) ──
+# Port 8080 → ticket-reservation (POST /events, POST /purchases)
 resource "aws_lb_listener" "reservation" {
   load_balancer_arn = aws_lb.main.arn
   port              = 8080
@@ -127,7 +127,7 @@ resource "aws_lb_listener" "reservation" {
   tags = local.resource_tags
 }
 
-# Puerto 8081 → ticket-availability (GET /events, GET /events/{id}/availability, GET /orders/{id})
+# Port 8081 → ticket-availability (GET /events, GET /events/{id}/availability, GET /orders/{id})
 resource "aws_lb_listener" "availability" {
   load_balancer_arn = aws_lb.main.arn
   port              = 8081
@@ -141,7 +141,7 @@ resource "aws_lb_listener" "availability" {
   tags = local.resource_tags
 }
 
-# ─── VPC LINK (API Gateway → ALB) ───────────────────────────────────────────
+# ─── VPC LINK (API Gateway → NLB) ───────────────────────────────────────────
 resource "aws_api_gateway_vpc_link" "main" {
   name        = "vpclink-${var.capacity}-${var.country}-${var.env}"
   target_arns = [aws_lb.main.arn]
@@ -160,11 +160,11 @@ resource "aws_api_gateway_rest_api" "main" {
   tags = local.resource_tags
 }
 
-# ─── AUTHORIZER REQUEST (Lambda) ─────────────────────────────────────────────
-# Tipo REQUEST: el Lambda recibe el evento completo (headers, path, método),
-# lo que permite que inspeccione el methodArn para aplicar restricción de admin
-# en POST /events. El contexto devuelto (userId, userRole) se propaga al backend
-# via request_parameters en cada integración.
+# ─── REQUEST AUTHORIZER (Lambda) ────────────────────────────────────────────
+# REQUEST type: Lambda receives the full event (headers, path, method),
+# allowing it to inspect methodArn to enforce admin restriction on POST /events.
+# The returned context (userId, userRole) is forwarded to the backend
+# via request_parameters in each integration.
 resource "aws_api_gateway_authorizer" "lambda" {
   name                             = "lambda-auth-${var.capacity}-${var.env}"
   rest_api_id                      = aws_api_gateway_rest_api.main.id
@@ -182,7 +182,7 @@ resource "aws_lambda_permission" "apigw_invoke_authorizer" {
   source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
 }
 
-# ─── RECURSOS API ─────────────────────────────────────────────────────────────
+# ─── API RESOURCES ────────────────────────────────────────────────────────────
 resource "aws_api_gateway_resource" "api" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
@@ -408,7 +408,7 @@ resource "aws_api_gateway_stage" "main" {
   tags = local.resource_tags
 }
 
-# ─── WAF WebACL asociado al stage ───────────────────────────────────────────
+# ─── WAF WebACL associated to stage ────────────────────────────────────────
 resource "aws_wafv2_web_acl" "main" {
   name  = "waf-${var.capacity}-${var.country}-${var.env}"
   scope = "REGIONAL"
