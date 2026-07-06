@@ -12,6 +12,7 @@ override.tf.json
 
 # Lambda zip (se genera localmente, no se versiona)
 *.zip
+!tickets-events.zip
 
 # IDE
 .idea/
